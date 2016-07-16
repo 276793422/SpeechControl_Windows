@@ -1,0 +1,2 @@
+# SpeechControl_Windows
+一个基于科大迅飞语音识别库的语音控制工具
