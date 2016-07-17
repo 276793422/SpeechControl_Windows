@@ -49,6 +49,7 @@ CTestIat::CTestIat(string szOutputPathFile)
 	m_bStart = false;
 	m_sessionID = NULL;
 	m_pWaveData = NULL;
+	m_dwWaveDataLen = IATLISTEN_MAX_AUDIO_SIZE;
 	m_nWaveDataSize = 0;
 
 	m_szOutputPathFile = szOutputPathFile;
@@ -95,7 +96,7 @@ bool CTestIat::Init(LPVOID pParam)
 
 	if (!m_pWaveData)
 	{
-		m_pWaveData = (char *)malloc(IATLISTEN_MAX_AUDIO_SIZE);
+		m_pWaveData = (char *)malloc(m_dwWaveDataLen);
 		if (!m_pWaveData)
 		{
 			iflyFini();
@@ -105,7 +106,7 @@ bool CTestIat::Init(LPVOID pParam)
 		}
 
 		m_nWaveDataSize = 0;
-		memset(m_pWaveData, 0, IATLISTEN_MAX_AUDIO_SIZE);
+		memset(m_pWaveData, 0, m_dwWaveDataLen);
 	}
 	else
 	{
@@ -182,7 +183,7 @@ bool CTestIat::StartAudio()
 
 	// init dump data
 	m_nWaveDataSize = 0;
-	memset(m_pWaveData, 0, IATLISTEN_MAX_AUDIO_SIZE);
+	memset(m_pWaveData, 0, m_dwWaveDataLen);
 
 	//将两个wHdr添加到waveIn中去  
 	for (int i = 0; i < IAT_MAX_AUDIO_BUFFERS; ++i)
@@ -279,9 +280,22 @@ bool CTestIat::dumpData(char *pPCM, int pcmSize)
 		return false;
 	}
 
-	//if ((m_nWaveDataSize + pcmSize) > IATLISTEN_MAX_AUDIO_SIZE)
-	//{
-	//}
+	if ((DWORD)(m_nWaveDataSize + pcmSize) > m_dwWaveDataLen)
+	{
+		//	音量过长了
+		//	重新申请内存，然后换空间
+		m_dwWaveDataLen = m_dwWaveDataLen * 2;
+		void *p = malloc(m_dwWaveDataLen * sizeof(char));
+		if (p == NULL)
+		{
+			MessageBoxA(NULL, "程序内存不足，音频记录失败", "很遗憾", MB_OK);
+			m_nWaveDataSize = 0;
+			return false;
+		}
+		memcpy(p, m_pWaveData, m_nWaveDataSize);
+		free(m_pWaveData);
+		m_pWaveData = (char *)p;
+	}
 
 	memcpy(m_pWaveData + m_nWaveDataSize, pPCM, pcmSize);
 	m_nWaveDataSize += pcmSize;
@@ -539,6 +553,7 @@ bool CTestIat::iflySendSession(char *pPCM, int pcmSize)
 	if (epStatus >= MSP_EP_AFTER_SPEECH)
 	{
 		PostMessageToMainDialog(MSG_TYPE_RESULT_STRING, m_result, strlen(m_result));
+		//	保存文字信息到文件
 		return false;
 	}
 

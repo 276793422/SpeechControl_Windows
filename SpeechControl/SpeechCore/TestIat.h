@@ -71,6 +71,7 @@ private:
     string m_szOutputPathFile;
 
     char *m_pWaveData;
+	DWORD m_dwWaveDataLen;
     int   m_nWaveDataSize;
 };
 
